@@ -1,0 +1,17 @@
+{
+  "name": "dgx-spark-cluster-dashboard",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:dash": "pnpm --filter dashboard dev",
+    "dev:server": "pnpm --filter server dev",
+    "build": "pnpm -r build",
+    "start": "node apps/server/src/index.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
