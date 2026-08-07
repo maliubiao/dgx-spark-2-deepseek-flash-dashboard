@@ -1,0 +1,17 @@
+[Unit]
+Description=dspark-agent — DGX Spark metrics collector (embedded TSDB + HTTP pull API)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/dspark-agent $AGENT_FLAGS
+EnvironmentFile=-/etc/dspark-agent.env
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
