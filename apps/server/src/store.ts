@@ -1,7 +1,7 @@
 // Central time-series store: mirrors agent data (node, name, ts, val).
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { openDb, type DbLike } from './sqlite.ts';
 
 export interface Row {
   n: string; // metric name
@@ -10,10 +10,10 @@ export interface Row {
 }
 
 export class Store {
-  private db: DatabaseSync;
+  private db: DbLike;
   constructor(path: string) {
     mkdirSync(dirname(path), { recursive: true });
-    this.db = new DatabaseSync(path);
+    this.db = openDb(path);
     this.db.exec(`PRAGMA journal_mode=WAL;`);
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS series(

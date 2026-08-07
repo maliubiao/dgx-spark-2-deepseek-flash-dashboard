@@ -21,7 +21,7 @@
 ```
 
 - **Agent**（Go，单静态二进制 `.aarch64`）：本机采集 → 写本地 SQLite 时序库 → 暴露 `/snapshot /range /changes`。仅安装时用一次 SSH。
-- **中控**（Node 25，零 runtime 依赖）：每 10s 增量拉两台 agent 的 `/changes` 落本地库，提供 `/api/*` + 托管前端。
+- **中控**（Node 25 或 Bun，零 runtime 依赖）：每 10s 增量拉两台 agent 的 `/changes` 落本地库，提供 `/api/*` + 托管前端。
 - **面板**（React + Vite + Recharts）：总览 / GPU主机 / 吞吐延迟 / 投机解码 / 缓存队列 / 网络。
 
 ## 配置机制（速览）

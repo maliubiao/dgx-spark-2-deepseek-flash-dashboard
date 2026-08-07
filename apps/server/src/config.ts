@@ -1,9 +1,9 @@
 // Persistent node/agent configuration (SQLite). This is the source of truth
 // for what the panel tracks — no hardcoding. Seeded once from env AGENTS if
 // the table is empty, then fully managed via the CRUD API / Settings UI.
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { openDb, type DbLike } from './sqlite.ts';
 
 export interface NodeCfg {
   id: string;
@@ -13,10 +13,10 @@ export interface NodeCfg {
 }
 
 export class ConfigStore {
-  private db: DatabaseSync;
+  private db: DbLike;
   constructor(path: string, seed: NodeCfg[]) {
     mkdirSync(dirname(path), { recursive: true });
-    this.db = new DatabaseSync(path);
+    this.db = openDb(path);
     this.db.exec(`PRAGMA journal_mode=WAL;`);
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS config_nodes(
