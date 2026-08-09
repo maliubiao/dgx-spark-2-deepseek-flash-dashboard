@@ -2,7 +2,7 @@ import { useSnapshot } from '../api/hooks';
 import { StatCard } from '../components/StatCard';
 import { MetricChart } from '../components/MetricChart';
 import { NodeBadges } from '../components/NodeBadges';
-import { fmt, fmtRate, fmtPct, fmtLatency } from '../lib/format';
+import { fmt, fmtRate, fmtPct, fmtPctRate, fmtLatency } from '../lib/format';
 
 interface Props {
   win: { sec: number; step: number };
@@ -34,8 +34,8 @@ export function Overview({ win, nodes }: Props) {
         <StatCard label="解码吞吐" value={fmtRate(headSnap['vllm.decode_tok_s'])} />
         <StatCard label="prefill 吞吐" value={fmtRate(headSnap['vllm.prompt_tok_s'])} />
         <StatCard label="KV cache 使用" value={fmtPct(headSnap['vllm.kv_usage_pct'])} />
-        <StatCard label="prefix 命中率" value={fmtPct(headSnap['vllm.prefix_hit_rate'])} accent="#6ee7a8" />
-        <StatCard label="投机接受率" value={fmtPct(headSnap['vllm.spec_accept_rate'])} />
+        <StatCard label="prefix 命中率" value={fmtPctRate(headSnap['vllm.prefix_hit_rate'])} accent="#6ee7a8" />
+        <StatCard label="投机接受率" value={fmtPctRate(headSnap['vllm.spec_accept_rate'])} />
         <StatCard label="平均接受长度" value={fmt(headSnap['vllm.spec_accept_len'], 1)} />
         <StatCard label="运行/等待" value={`${fmt(headSnap['vllm.running'], 0)} / ${fmt(headSnap['vllm.waiting'], 0)}`} />
         <StatCard label="TTFT p50" value={fmtLatency(headSnap['vllm.ttft_p50'])} />

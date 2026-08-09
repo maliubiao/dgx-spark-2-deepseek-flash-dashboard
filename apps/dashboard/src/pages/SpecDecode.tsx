@@ -13,9 +13,9 @@ export function SpecDecode({ win, nodes }: Props) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
       <MetricChart
         title="投机接受率 (accepted/draft)" unit="%"
-        series={[{ node: head, name: 'vllm.spec_accept_rate', label: '接受率' }]}
+        series={[{ node: head, name: 'vllm.spec_accept_rate', label: '接受率', scale: 100 }]}
         window={win} nodes={nodes} refreshMs={15000}
-        yDomain={[0, 1]}
+        yDomain={[0, 100]}
       />
       <MetricChart
         title="平均接受长度" unit="tok"
@@ -32,14 +32,15 @@ export function SpecDecode({ win, nodes }: Props) {
       />
       <MetricChart
         title="MTP 各位置接受率" unit="%"
-        series={[0, 1, 2, 3, 4, 5].map((k) => ({
+        series={[0, 1, 2, 3, 4].map((k) => ({ // 与本模型实际发布的 MTP 档位一致（agent 动态采集）
           node: head,
           name: `vllm.spec_pos_${k}_rate`,
           label: `pos${k}`,
           color: PCT[k % PCT.length],
+          scale: 100,
         }))}
         window={win} nodes={nodes} refreshMs={15000}
-        yDomain={[0, 1]}
+        yDomain={[0, 100]}
       />
     </div>
   );

@@ -44,7 +44,7 @@ export function MetricChart({
   const [data, setData] = useState<Row[]>([]);
 
   const resolved = useMemo(() => {
-    const out: { key: string; label: string; color: string; name: string; node: string }[] = [];
+    const out: { key: string; label: string; color: string; name: string; node: string; scale: number }[] = [];
     for (const s of series) {
       const targets = s.node ? [s.node] : nodes;
       targets.forEach((n, i) => {
@@ -54,6 +54,7 @@ export function MetricChart({
           color: s.color ?? seriesColor(s.node ?? n, i),
           name: s.name,
           node: n,
+          scale: s.scale ?? 1,
         });
       });
     }
@@ -70,7 +71,7 @@ export function MetricChart({
       const results: [string, Point[]][] = await Promise.all(
         resolved.map((r) =>
           getRange(r.node, r.name, from, to, window.step)
-            .then((pts) => [r.key, pts] as [string, Point[]])
+            .then((pts) => [r.key, pts.map((p) => ({ ts: p.ts, val: p.val * r.scale }))] as [string, Point[]])
             .catch(() => [r.key, [] as Point[]] as [string, Point[]])
         )
       );

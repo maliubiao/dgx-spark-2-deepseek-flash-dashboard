@@ -14,6 +14,12 @@ function level(s: Record<string, number>): { color: string; text: string } {
   return { color: '#ef5350', text: '离线' };
 }
 
+// vLLM 状态：无 vllm.* 系列 = 该节点没接入 vLLM（如 worker）而非“空闲”。
+function vllmState(s: Record<string, number>): string {
+  if (!Object.keys(s).some((k) => k.startsWith('vllm.'))) return '未接入';
+  return Number(s['vllm.decode_tok_s']) > 0 ? '活跃' : '空闲';
+}
+
 export function NodeBadges({ snap, nodes }: Props) {
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -35,7 +41,7 @@ export function NodeBadges({ snap, nodes }: Props) {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#e8eef8' }}>{n}</span>
             <span style={{ fontSize: 11, color: '#7c8aa0' }}>{lv.text}</span>
             <span style={{ fontSize: 11, color: COLORS[i % COLORS.length] }}>
-              vLLM: {Number(s['vllm.decode_tok_s']) > 0 ? '活跃' : '空闲'}
+              vLLM: {vllmState(s)}
             </span>
           </div>
         );

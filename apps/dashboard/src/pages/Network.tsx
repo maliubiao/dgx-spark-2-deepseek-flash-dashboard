@@ -10,6 +10,9 @@ interface Props {
 
 const FABRIC = ['enp1s0f0np0', 'enp1s0f1np1', 'enP2p1s0f0np0', 'enP2p1s0f1np1'];
 
+// host.net.<iface>.*_bps 是 agent 算出的 bits/s；显示成 Byte/s 需 ÷8。
+const toBytesPS = (bps: number) => bps / 8;
+
 export function Network({ win, nodes }: Props) {
   const snap = useSnapshot(5000);
   const totalRx = (n: string) =>
@@ -24,7 +27,7 @@ export function Network({ win, nodes }: Props) {
             key={n}
             label={`${n} RoCE 链路`}
             value={`${fmt(snap[n]?.['host.roce.active'], 0)} / 2`}
-            sub={`⇣ ${fmtBytesHR(totalRx(n))}/s ⇡ ${fmtBytesHR(totalTx(n))}/s`}
+            sub={`⇣ ${fmtBytesHR(toBytesPS(totalRx(n)))}/s ⇡ ${fmtBytesHR(toBytesPS(totalTx(n)))}/s`}
             accent={Number(snap[n]?.['host.roce.active']) >= 2 ? '#6ee7a8' : '#ef5350'}
           />
         ))}

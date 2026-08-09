@@ -3,6 +3,7 @@ export interface SeriesDef {
   name: string;  // metric name
   label?: string;
   color?: string;
+  scale?: number; // display multiplier after fetch (e.g. 0-1 rate → percent)
 }
 
 // node colors

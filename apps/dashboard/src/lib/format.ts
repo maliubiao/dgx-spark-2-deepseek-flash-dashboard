@@ -13,6 +13,10 @@ export const fmtRate = (v: number | undefined): string =>
 export const fmtPct = (v: number | undefined): string =>
   v === undefined || Number.isNaN(v) ? '—' : `${v.toFixed(1)}%`;
 
+// fmtPctRate: vLLM `*_rate` 系列存的是 0-1 分数（如 0.96），展示成百分比需 ×100。
+export const fmtPctRate = (v: number | undefined): string =>
+  v === undefined || Number.isNaN(v) ? '—' : `${(v * 100).toFixed(1)}%`;
+
 export const fmtBytesHR = (v: number | undefined): string => {
   if (v === undefined || Number.isNaN(v) || v <= 0) return '—';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
