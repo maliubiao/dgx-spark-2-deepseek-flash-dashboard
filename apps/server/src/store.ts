@@ -85,13 +85,20 @@ CREATE TABLE IF NOT EXISTS latest(
   }
 
   range(node: string, name: string, from: number, to: number, step: number): { ts: number; val: number }[] {
+    // ponytail: node:sqlite binds JS numbers as REAL, so `ts / step` becomes
+    // float division and (ts/step)*step round-trips to ts → bucketing never
+    // applies → two nodes' ts never align → frontend lines render as M..Z dots.
+    // Bind step/from/to as BigInt so SQLite does integer division.
     let q: string;
-    let args: (string | number)[];
+    let args: (string | number | bigint)[];
     if (step > 0) {
+      const s = BigInt(step);
+      const f = BigInt(Math.floor(from));
+      const t = BigInt(Math.ceil(to));
       q = `SELECT (ts / ?) * ? ts, AVG(val) val FROM series
            WHERE node = ? AND name = ? AND ts >= ? AND ts <= ?
            GROUP BY ts / ? ORDER BY ts`;
-      args = [step, step, node, name, from, to, step];
+      args = [s, s, node, name, f, t, s];
     } else {
       q = `SELECT ts, val FROM series WHERE node = ? AND name = ? AND ts >= ? AND ts <= ? ORDER BY ts`;
       args = [node, name, from, to];
