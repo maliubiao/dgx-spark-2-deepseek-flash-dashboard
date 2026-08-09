@@ -50,7 +50,7 @@ func (v *collectorVllm) collect() ([]row, error) {
 
 	// --- raw gauges (always) ---
 	for _, g := range gaugeFams {
-		out = append(out, row{Name: g.name, Ts: nowTs,Val: g.get(cur)})
+		out = append(out, row{Name: g.name, Ts: nowTs, Val: g.get(cur)})
 	}
 
 	// --- deltas / rates (needs a previous scrape) ---
@@ -65,29 +65,31 @@ func (v *collectorVllm) collect() ([]row, error) {
 				return d
 			}
 			rate := func(key, name string) {
-				out = append(out, row{Name: name, Ts: nowTs,Val: diff(key) / dt})
+				out = append(out, row{Name: name, Ts: nowTs, Val: diff(key) / dt})
 			}
 			rate("gen_tokens", "vllm.decode_tok_s")
 			rate("prompt_tokens", "vllm.prompt_tok_s")
 			rate("iter_tokens", "vllm.iter_tok_s")
 
 			if dq := diff("prefix_queries"); dq > 0 {
-				out = append(out, row{Name: "vllm.prefix_hit_rate", Ts: nowTs,Val: diff("prefix_hits") / dq})
+				out = append(out, row{Name: "vllm.prefix_hit_rate", Ts: nowTs, Val: diff("prefix_hits") / dq})
 			}
 			if dp := diff("prompt_tokens"); dp > 0 {
-				out = append(out, row{Name: "vllm.prompt_cached_pct", Ts: nowTs,Val: diff("prompt_cached") / dp * 100})
+				out = append(out, row{Name: "vllm.prompt_cached_pct", Ts: nowTs, Val: diff("prompt_cached") / dp * 100})
 			}
 			if dd := diff("spec_draft"); dd > 0 {
-				out = append(out, row{Name: "vllm.spec_accept_rate", Ts: nowTs,Val: diff("spec_accepted") / dd})
+				out = append(out, row{Name: "vllm.spec_accept_rate", Ts: nowTs, Val: diff("spec_accepted") / dd})
 			}
 			if dn := diff("spec_drafts"); dn > 0 {
-				out = append(out, row{Name: "vllm.spec_accept_len", Ts: nowTs,Val: diff("spec_accepted") / dn})
+				out = append(out, row{Name: "vllm.spec_accept_len", Ts: nowTs, Val: diff("spec_accepted") / dn})
 			}
-			// per-position acceptance rates (position k: accepted_k / drafts)
-			for k := 0; k < 6; k++ {
+			// per-position acceptance rates (position k: accepted_k / drafts)。
+			// 只对 vLLM 实际发布的 position 生成系列：硬编码上界会产生
+			// 永不更新的幽灵系列（例如只发布 0..4 时，position=5 恒为 0）。
+			for _, k := range specPositions(samples) {
 				key := fmt.Sprintf("spec_pos_accepted[position=%d]", k)
 				if dn := diff("spec_drafts"); dn > 0 {
-					out = append(out, row{Name: fmt.Sprintf("vllm.spec_pos_%d_rate", k), Ts: nowTs,Val: diff(key) / dn})
+					out = append(out, row{Name: fmt.Sprintf("vllm.spec_pos_%d_rate", k), Ts: nowTs, Val: diff(key) / dn})
 				}
 			}
 		}
@@ -97,9 +99,9 @@ func (v *collectorVllm) collect() ([]row, error) {
 	for _, h := range histFams {
 		p50, p90, p99 := percentiles(samples, h.fam)
 		out = append(out,
-			row{Name: h.name + "_p50", Ts: nowTs,Val: p50},
-			row{Name: h.name + "_p90", Ts: nowTs,Val: p90},
-			row{Name: h.name + "_p99", Ts: nowTs,Val: p99},
+			row{Name: h.name + "_p50", Ts: nowTs, Val: p50},
+			row{Name: h.name + "_p90", Ts: nowTs, Val: p90},
+			row{Name: h.name + "_p99", Ts: nowTs, Val: p99},
 		)
 	}
 
@@ -287,4 +289,26 @@ func percentiles(samples []sample, fam string) (p50, p90, p99 float64) {
 		return buckets[len(buckets)-1].le
 	}
 	return q(50), q(90), q(99)
+}
+
+// specPositions 返回本次抓取中实际出现的 spec-decode position（升序），
+// 让 per-position 系列数量跟随 vLLM 配置，而非硬编码。
+func specPositions(samples []sample) []int {
+	set := make(map[int]struct{})
+	for _, s := range samples {
+		if s.name != "vllm:spec_decode_num_accepted_tokens_per_pos_total" {
+			continue
+		}
+		if p, ok := s.labels["position"]; ok {
+			if n, err := strconv.Atoi(p); err == nil {
+				set[n] = struct{}{}
+			}
+		}
+	}
+	pos := make([]int, 0, len(set))
+	for k := range set {
+		pos = append(pos, k)
+	}
+	sort.Ints(pos)
+	return pos
 }

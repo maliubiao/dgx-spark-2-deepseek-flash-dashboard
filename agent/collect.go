@@ -124,7 +124,9 @@ func gpuMetrics() (map[string]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	fields := strings.Split(strings.TrimSpace(string(b)), ",")
+	// 单 GPU 主机（DGX Spark GB10），忽略多行场景的后续行。
+	line := strings.SplitN(strings.TrimSpace(string(b)), "\n", 2)[0]
+	fields := strings.Split(line, ",")
 	if len(fields) < 7 {
 		return nil, fmt.Errorf("unexpected nvidia-smi output: %q", string(b))
 	}
@@ -132,13 +134,51 @@ func gpuMetrics() (map[string]float64, error) {
 	out["host.gpu.util"] = atof(fields[1])
 	out["host.gpu.temp_c"] = atof(fields[2])
 	out["host.gpu.power_w"] = atof(fields[3])
-	out["host.gpu.mem_used_gb"] = atof(fields[4]) / 1024
-	out["host.gpu.mem_total_gb"] = atof(fields[5]) / 1024
-	if total := atof(fields[5]); total > 0 {
-		out["host.gpu.mem_used_pct"] = atof(fields[4]) / total * 100
+	// GB10 为统一内存，memory.used/total 常返回 [N/A]；此时回退到
+	// compute-apps 的每进程显存表求和，避免把真实占用记成 0。
+	if usedMiB, ok := gpuMemNumeric(fields[4]); ok {
+		out["host.gpu.mem_used_gb"] = usedMiB / 1024
+	} else if usedMiB, ok := gpuMemFromApps(); ok {
+		out["host.gpu.mem_used_gb"] = usedMiB / 1024
+	}
+	if totalMiB, ok := gpuMemNumeric(fields[5]); ok && totalMiB > 0 {
+		out["host.gpu.mem_total_gb"] = totalMiB / 1024
+		if used, ok := out["host.gpu.mem_used_gb"]; ok {
+			out["host.gpu.mem_used_pct"] = used / (totalMiB / 1024) * 100
+		}
 	}
 	out["host.gpu.sm_mhz"] = atof(fields[6])
 	return out, nil
+}
+
+// gpuMemNumeric 解析 nvidia-smi 数字字段，显式拒绝 "N/A" 等非数字值。
+func gpuMemNumeric(s string) (float64, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" || strings.EqualFold(s, "N/A") {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+// gpuMemFromApps 汇总 compute-apps 表中的每进程显存（MiB）——统一内存
+// GB10 上唯一可靠的显存来源。
+func gpuMemFromApps() (float64, bool) {
+	cmd := exec.Command("nvidia-smi", "--query-compute-apps=used_memory", "--format=csv,noheader,nounits")
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	sum := 0.0
+	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if v, ok := gpuMemNumeric(l); ok {
+			sum += v
+		}
+	}
+	return sum, sum > 0
 }
 
 // ---- CPU ----
